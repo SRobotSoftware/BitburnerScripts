@@ -34,7 +34,7 @@ export async function main(ns) {
             },
             chaosLimit: 50,
             blopThresh: 0.8,
-            activityThresh: 0.33,
+            activityThresh: 0.35,
         },
         prog: {
             name: 'Bladeburner Daemon',
@@ -158,9 +158,8 @@ export async function main(ns) {
         // if (pop <= 1e9) ns.travelToCity('foo')
 
         // Check for Blops
-        if (currentAction.type !== 'Idle' && currentAction.name !== 'Training') return false
+        if (currentAction.type === 'blackops') return false
 
-        utils.log('Checking Blops...')
         const currentRank = ns.bladeburner.getRank()
         const blop = config.global.blops
             .map(blop => ({
@@ -178,15 +177,15 @@ export async function main(ns) {
         }
 
         // Check for Activities
-        if (currentAction.type !== 'Idle' && currentAction.name !== 'Training') return false
-        
-        utils.log('Checking Activities...')
-        const remapActivities = a => config.global.activities[a].map(x => ({
-            name: x,
-            type: a,
-            successChance: ns.bladeburner.getActionEstimatedSuccessChance(a, x),
-            repGain: ns.bladeburner.getActionRepGain(a, x),
-        }))
+        const remapActivities = a => config.global.activities[a].map(x => {
+            const successChance = ns.bladeburner.getActionEstimatedSuccessChance(a, x)
+            return {
+                name: x,
+                type: a,
+                successChance: successChance.reduce((p, c) => p+c, 0) / successChance.length,
+                repGain: ns.bladeburner.getActionTime() / ns.bladeburner.getActionRepGain(a, x),
+            }
+        })
         
         const activities = [
             ...remapActivities('general'),
@@ -196,16 +195,11 @@ export async function main(ns) {
 
         const activity = activities
             .sort((a, b) => b.repGain - a.repGain)
-            .find(x => x.successChance[0] >= config.global.activityThresh && ns.bladeburner.startAction(x.type, x.name))
+            .find(x => x.successChance >= config.global.activityThresh && (x.name === currentAction.name || ns.bladeburner.startAction(x.type, x.name)))
 
-        if (activity) {
+        if (activity?.name !== currentAction.name) {
             utils.log(`Executing ${activity.name}...`)
             return false
-        }
-
-        if (currentAction.type === 'Idle' || currentAction.name === 'Training') {
-            utils.log('No Activities, attempting Tracking...')
-            ns.bladeburner.startAction('contract', 'Tracking')
         }
 
         if (currentAction.type === 'Idle') {
