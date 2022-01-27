@@ -3,6 +3,7 @@ import UtilsCore from 'utils/utils.core.js'
 // THIS NEEDS SO MUCH CLEANUP WOW
 
 /** @param {NS} ns **/
+/** @param {import("../.").NS} ns */
 export async function main(ns) {
     /******************************************************************************************************
      * Configuration                                                                                      *

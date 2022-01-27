@@ -2,6 +2,7 @@ import UtilsCore from 'utils/utils.core.js'
 import UtilsNetwork from 'utils/utils.network.js'
 
 /** @param {NS} ns **/
+/** @param {import("../.").NS} ns */
 export async function main(ns) {
     /******************************************************************************************************
      * Configuration                                                                                      *

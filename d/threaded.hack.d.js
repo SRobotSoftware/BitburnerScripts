@@ -19,6 +19,7 @@ function sCalculateHackingTime(server, player) {
 }
 
 /** @param {NS} ns **/
+/** @param {import("../.").NS} ns */
 export async function main(ns) {
     /******************************************************************************************************
      * Configuration                                                                                      *
