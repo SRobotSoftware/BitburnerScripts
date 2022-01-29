@@ -32,6 +32,10 @@ export default class UtilsNetwork {
        return Array.from(this.getAllServersAsSet())
     }
 
+    canHackServer(x, hl) {
+        return this.ns.getServerRequiredHackingLevel(x) <= hl
+    }
+
     nukeServer(target) {
         let server
         try {

@@ -120,6 +120,7 @@ export async function main(ns) {
             else if (player.defense < config.global.minimumStats) ns.gymWorkout(config.global.gym, 'defense', false)
             else if (player.dexterity < config.global.minimumStats) ns.gymWorkout(config.global.gym, 'dexterity', false)
             else if (player.agility < config.global.minimumStats) ns.gymWorkout(config.global.gym, 'agility', false)
+            await ns.sleep(10000)
             return false
         }
 
