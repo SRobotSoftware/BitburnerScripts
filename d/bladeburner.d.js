@@ -59,15 +59,6 @@ export async function main(ns) {
         const startupMsg = `${config.prog.name} has started`
         ns.toast(startupMsg)
         utils.log(startupMsg)
-
-        config.global.blops = ns.bladeburner.getBlackOpNames()
-        config.global.upgrades = ns.bladeburner.getSkillNames()
-        config.global.activities = {
-            'general': ns.bladeburner.getGeneralActionNames(),
-            'contracts': ns.bladeburner.getContractNames(),
-            'operations': ns.bladeburner.getOperationNames(),
-        }
-
     }
 
     /*********************************************
@@ -94,6 +85,15 @@ export async function main(ns) {
             else if (player.dexterity < config.global.minimumStats) ns.gymWorkout(config.global.gym, 'dexterity', false)
             else if (player.agility < config.global.minimumStats) ns.gymWorkout(config.global.gym, 'agility', false)
             return false
+        }
+
+        if (!ns.bladeburner.joinBladeburnerDivision()) return false
+        config.global.blops = ns.bladeburner.getBlackOpNames()
+        config.global.upgrades = ns.bladeburner.getSkillNames()
+        config.global.activities = {
+            'general': ns.bladeburner.getGeneralActionNames(),
+            'contracts': ns.bladeburner.getContractNames(),
+            'operations': ns.bladeburner.getOperationNames(),
         }
 
         const [currentStamina, maxStamina] = ns.bladeburner.getStamina()

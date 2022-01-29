@@ -129,10 +129,8 @@ export default class UtilsCore {
         getTitle() {
             const len = this.getHeaderStr().length
             let res = [this.dividers.title.l, this.dividers.title.le, ...this.title.split(''), this.dividers.title.re, this.dividers.title.r]
-            let side = false
             while (res.length < len) {
-                res.splice(side ? 1 : -1, 0, this.dividers.title.c)
-                side = !side
+                res.splice(-1, 0, this.dividers.title.c)
             }
             return (res.length > len) ? '' : `${res.join('')}\n`
         }
