@@ -33,8 +33,9 @@ export async function main(ns) {
                 'Overclock': 90,
             },
             chaosLimit: 50,
-            blopThresh: 0.8,
-            activityThresh: 0.35,
+            blopThresh: 0.55,
+            activityThresh: 0.33,
+            cityNames: ["Aevum", "Chongqing", "Sector-12", "New Tokyo", "Ishima", "Volhaven"],
         },
         prog: {
             name: 'Bladeburner Daemon',
@@ -66,6 +67,7 @@ export async function main(ns) {
             'contracts': ns.bladeburner.getContractNames(),
             'operations': ns.bladeburner.getOperationNames(),
         }
+
     }
 
     /*********************************************
@@ -117,6 +119,12 @@ export async function main(ns) {
             ns.bladeburner.stopBladeburnerAction()
         }
 
+        const highestPop = config.global
+            .cityNames.map(x => ({ name: x, pop: ns.bladeburner.getCityEstimatedPopulation(x) }))
+            .sort((a, b) => b.pop - a.pop)
+        
+        if (highestPop[0].name !== ns.bladeburner.getCity()) ns.bladeburner.switchCity(highestPop[0].name)
+
         // Purchase upgrades
         const upgrades = [
             'Blade\'s Intuition',
@@ -143,14 +151,11 @@ export async function main(ns) {
         upgradesMap.unshift(upgradesMap.splice(upgradesMap.findIndex(x => x === 'Hyperdrive'), 1)[0])
         upgradesMap.unshift(upgradesMap.splice(upgradesMap.findIndex(x => x === 'Overclock'), 1)[0])
 
-        while (upgradesMap.some(x => {
-                if (x.rank >= config.global.skillCaps?.[x]) return false
-                return ns.bladeburner.upgradeSkill(x.name)
-            })) {}
+        while (upgradesMap.some(x => (x.rank >= config.global.skillCaps?.[x.name]) ? false : ns.bladeburner.upgradeSkill(x.name))) {}
 
         // When Chaos is over 50 do some stealth retirement
-        const chaos = ns.bladeburner.getCityChaos(player.city)
-        if (chaos >= 50) ns.startAction('operation', 'Stealth Retirement Operation')
+        const chaos = ns.bladeburner.getCityChaos(ns.bladeburner.getCity())
+        if (chaos >= 50) ns.bladeburner.startAction('operation', 'Stealth Retirement Operation')
 
         // If pop is <= 1e9 swap cities?
         // const pop = ns.bladeburner.getCityEstimatedPopulation(player.city)
@@ -158,18 +163,17 @@ export async function main(ns) {
         // if (pop <= 1e9) ns.travelToCity('foo')
 
         // Check for Blops
-        if (currentAction.type === 'blackops') return false
-
+        if (currentAction.type === 'BlackOp' || currentAction.name === config.global.restingAction.name) return false
         const currentRank = ns.bladeburner.getRank()
         const blop = config.global.blops
             .map(blop => ({
                 name: blop,
-                successChance: ns.bladeburner.getActionEstimatedSuccessChance('blackops', blop),
+                successChance: ns.bladeburner.getActionEstimatedSuccessChance('BlackOp', blop),
                 requiredRanks: ns.bladeburner.getBlackOpRank(blop),
             }))
             .sort((a, b) => a.requiredRanks - b.requiredRanks)
-            .filter(x => x.requiredRanks >= currentRank && x.successChance[0] >= config.global.blopThresh)
-            .find(x => ns.bladeburner.startAction('blackops', x.name))
+            .filter(x => x.requiredRanks <= currentRank && x.successChance[0] >= config.global.blopThresh)
+            .find(x => ns.bladeburner.startAction('BlackOp', x.name))
 
         if (blop) {
             utils.log(`Executing ${blop.name}...`)
@@ -178,27 +182,38 @@ export async function main(ns) {
 
         // Check for Activities
         const remapActivities = a => config.global.activities[a].map(x => {
-            const successChance = ns.bladeburner.getActionEstimatedSuccessChance(a, x)
+            const rep = ns.bladeburner.getActionRepGain(a, x)
+            const time = ns.bladeburner.getActionTime(a, x) / 1000
+            const successChance = ns.bladeburner.getActionEstimatedSuccessChance(a, x).reduce((p, c) => p+=c, 0) / 2
             return {
                 name: x,
                 type: a,
-                successChance: successChance.reduce((p, c) => p+c, 0) / successChance.length,
-                repGain: ns.bladeburner.getActionTime() / ns.bladeburner.getActionRepGain(a, x),
+                successChance,
+                rep,
+                time,
+                repGain: rep / time * successChance,
             }
         })
         
-        const activities = [
+        let activities = [
             ...remapActivities('general'),
             ...remapActivities('operations'),
             ...remapActivities('contracts'),
         ]
 
-        const activity = activities
-            .sort((a, b) => b.repGain - a.repGain)
-            .find(x => x.successChance >= config.global.activityThresh && (x.name === currentAction.name || ns.bladeburner.startAction(x.type, x.name)))
 
-        if (activity?.name !== currentAction.name) {
-            utils.log(`Executing ${activity.name}...`)
+       activities = activities
+            .filter(x => x && x.repGain >= 0)
+            .sort((a, b) => b.repGain - a.repGain)
+        
+        activities.unshift(activities.splice(activities.findIndex(x => x.name === 'Assassination'), 1)[0])
+
+        const activity = activities.find(x => x.successChance >= config.global.activityThresh)
+
+        if (activity && activity?.name !== currentAction.name) {
+            utils.log(`Executing ${activity.name}
+    ${utils.formatPercent(activity.successChance)} | ${Math.floor(activity.rep)} | ${utils.formatSec(activity.time)} | ${activity.repGain.toFixed(2)}/s`)
+            ns.bladeburner.startAction(activity.type, activity.name)
             return false
         }
 
