@@ -66,12 +66,38 @@ export default class UtilsCore {
     }
 
     TableHelper = class {
-        // ─ │ ┌ ┐ └ ┘ ├ ┬ ┤ ┴
-        constructor(utils, headers = [], rowDivider = '-', columnDivider = '|') {
+        // ╒ ═ ╕ ╡ ╞
+        // ─ ┼ │ ┌ ┬ ┐ └ ┴ ┘ ├ ┬ ┤
+        constructor(utils, headers = [], title) {
+            this.title = title
             this.utils = utils
             this.headers = headers
-            this.rowDivider = rowDivider
-            this.columnDivider = columnDivider
+            this.dividers = {
+                title: {
+                    l: '╒',
+                    le: '╡',
+                    r: '╕',
+                    re: '╞',
+                    c: '═',
+                },
+                top: {
+                    l: '┌',
+                    c: '┬',
+                    r: '┐',
+                },
+                mid: {
+                    l: '├',
+                    c: '┼',
+                    r: '┤',
+                },
+                bot: {
+                    l: '└',
+                    c: '┴',
+                    r: '┘',
+                },
+                row: '─',
+                col: '│',
+            }
             this.data = []
         }
         prepHeader(str, pre = '', post = 's') {
@@ -90,8 +116,25 @@ export default class UtilsCore {
         getHeaderStr() {
             return this.utils.ns.sprintf(this.getFormatStr(), ...this.headers.map(x => x?.str))
         }
-        getDividerStr() {
-            return this.utils.leftPad('', this.getHeaderStr().length, this.rowDivider)
+        getDividerStr(left = '├', divider = '┼', right = '┤') {
+            const res = this.utils.leftPad('', this.getHeaderStr().length, this.dividers.row).split('')
+            res[0] = left
+            this.getHeaderStr().split('').forEach((x, i, a) => {
+                if (i === 0 || i === a.length - 1) return null
+                if (x === this.dividers.col) res[i] = divider
+            })
+            res[res.length - 1] = right
+            return res.join('')
+        }
+        getTitle() {
+            const len = this.getHeaderStr().length
+            let res = [this.dividers.title.l, this.dividers.title.le, ...this.title.split(''), this.dividers.title.re, this.dividers.title.r]
+            let side = false
+            while (res.length < len) {
+                res.splice(side ? 1 : -1, 0, this.dividers.title.c)
+                side = !side
+            }
+            return (res.length > len) ? '' : `${res.join('')}\n`
         }
         getDataStr(r) {
             return this.utils.ns.sprintf(this.getFormatStr(), ...this.data[r])
@@ -103,21 +146,22 @@ export default class UtilsCore {
                     this.headers.slice().map(x => (x.str + '').length))
                 .reduce((p, c, i) => {
                     const opts = this.headers[i]
-                    p += ` %${opts?.pre || ''}${c}${opts?.post || 's'} ${this.columnDivider}`
+                    p += ` %${opts?.pre || ''}${c}${opts?.post || 's'} ${this.dividers.col}`
                     return p
-                }, `${this.columnDivider}`)
+                }, `${this.dividers.col}`)
         }
         clear() {
             this.data = []
         }
         print() {
             const formatStr = this.getFormatStr()
-            const divider = this.getDividerStr()
-            let str = `${divider}`
+            let str = ''
+            if (this.title) str += this.getTitle()
+            str += `${this.getDividerStr(this.dividers.top.l, this.dividers.top.c, this.dividers.top.r)}`
             str += `\n${this.utils.ns.sprintf(formatStr, ...this.headers.map(x => x?.str))}`
-            str += `\n${divider}`
+            str += `\n${this.getDividerStr(this.dividers.mid.l, this.dividers.mid.c, this.dividers.mid.r)}`
             this.data.forEach((x, i) => str += `\n${this.utils.ns.sprintf(formatStr, ...this.data[i])}`)
-            str += `\n${divider}`
+            str += `\n${this.getDividerStr(this.dividers.bot.l, this.dividers.bot.c, this.dividers.bot.r)}`
             this.utils.ns.print(str)
         }
     }
