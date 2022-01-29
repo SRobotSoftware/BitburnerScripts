@@ -151,7 +151,7 @@ export async function main(ns) {
         upgradesMap.unshift(upgradesMap.splice(upgradesMap.findIndex(x => x === 'Hyperdrive'), 1)[0])
         upgradesMap.unshift(upgradesMap.splice(upgradesMap.findIndex(x => x === 'Overclock'), 1)[0])
 
-        while (upgradesMap.some(x => (x.rank >= config.global.skillCaps?.[x.name]) ? false : ns.bladeburner.upgradeSkill(x.name))) {}
+        while (upgradesMap.map(x => (x.rank >= config.global.skillCaps?.[x.name]) ? false : ns.bladeburner.upgradeSkill(x.name)).some(x => x)) {}
 
         // When Chaos is over 50 do some stealth retirement
         const chaos = ns.bladeburner.getCityChaos(ns.bladeburner.getCity())
