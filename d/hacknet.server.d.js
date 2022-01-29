@@ -70,6 +70,7 @@ export async function main(ns) {
     const program = async () => {
         while (ns.hacknet.spendHashes('Sell for Money')) {}
         while (ns.hacknet.purchaseNode() >= 0) {}
+
         const servers = (new Array(ns.hacknet.numNodes()))
             .fill()
             .map((_, i) => ({ i, ...ns.hacknet.getNodeStats(i)}))
@@ -79,35 +80,42 @@ export async function main(ns) {
             ratio: utils.formatPercent(ns.hacknet.numHashes() / ns.hacknet.hashCapacity()),
             rate: servers.reduce((p, c) => p+=c.production, 0).toFixed(2),
         }
-        while (servers.sort((a, b) => a.cache - b.cache).some(x => ns.hacknet.upgradeCache(x.i, 1))) {}
-        while (servers.sort((a, b) => a.cores - b.cores).some(x => ns.hacknet.upgradeCore(x.i, 1))) {}
-        while (servers.sort((a, b) => a.level - b.level).some(x => ns.hacknet.upgradeLevel(x.i, 1))) {}
-        while (servers.sort((a, b) => a.ram - b.ram).some(x => ns.hacknet.upgradeRam(x.i, 1))) {}
+
+        servers.sort((a, b) => a.cache - b.cache)
+        while (servers.some(x => ns.hacknet.upgradeCache(x.i, 1))) {}
+
+        servers.sort((a, b) => a.cores - b.cores)
+        while (servers.some(x => ns.hacknet.upgradeCore(x.i, 1))) {}
+
+        servers.sort((a, b) => a.level - b.level)
+        while (servers.some(x => ns.hacknet.upgradeLevel(x.i, 1))) {}
+
+        servers.sort((a, b) => a.ram - b.ram)
+        while (servers.some(x => ns.hacknet.upgradeRam(x.i, 1))) {}
 
         servers.sort((a, b) => a.i - b.i)
         servers.forEach(x => {
             delete x.name
             delete x.timeOnline
             delete x.totalProduction
+            delete x.ramUsed
         })
 
         const ttc = Math.ceil(4 / hashes.rate)
         hashes.ttc = utils.formatSec(ttc)
         hashes['$/s'] = utils.formatCost(Math.floor(1e6 / ttc))
         hashes.rate = hashes.rate + '/s'
-
-        const hashesTable = new utils.TableHelper(utils, Object.keys(hashes), 'Hashes')
-        const serverTable = new utils.TableHelper(utils, Object.keys(servers[0]), 'Hacknet Servers')
         
+        ns.clearLog()
+        const hashesTable = new utils.TableHelper(utils, Object.keys(hashes), 'Hashes')
+        hashesTable.data = [Object.keys(hashes).map(x => hashes[x])]
+        hashesTable.print()
+        
+        const serverTable = new utils.TableHelper(utils, Object.keys(servers[0]), 'Hacknet Servers')
         serverTable.data = servers.map(x => Object.keys(x).map(y => {
-            if (y === 'timeOnline') return utils.formatSec(Math.floor(x[y]))
             if (y === 'production') return x[y].toFixed(3)
-            if (y === 'totalProduction') return Math.floor(x[y])
             return x[y]
         }))
-        hashesTable.data = [Object.keys(hashes).map(x => hashes[x])]
-        ns.clearLog()
-        hashesTable.print()
         serverTable.print()
     }
 
